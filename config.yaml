@@ -1,0 +1,52 @@
+# aimlab-analyzer configuration
+# Fill in your real values. Each session saves a copy of the resolved settings,
+# so changing this file later does not silently change old recordings.
+
+# Which profile below to use when recording (override with --profile).
+active_profile: cs2
+
+mouse:
+  dpi: 2800           # your mouse DPI / CPI. Used for physical distance (cm).
+
+hotkeys:
+  toggle: F8          # start / stop a session (global; works while the game is focused)
+  quit: F10           # exit the logger (saves the current session if one is running)
+
+output:
+  dir: sessions       # relative to this config file
+  format: parquet     # parquet | csv
+
+# Conversion from mouse counts to degrees of view rotation.
+# Each profile resolves to degrees-per-count using the first rule that applies:
+#   1. deg_per_count: set explicitly
+#   2. cm_per_360:    deg_per_count = 360 / (cm_per_360 / 2.54 * dpi)
+#   3. sens * yaw:    deg_per_count = sens * yaw   (Source / CS2 style)
+# Vertical: in sens mode pitch uses sens * pitch. Otherwise pitch = yaw * pitch_ratio.
+profiles:
+  cs2:
+    game: cs2
+    sens: 0.28        # in-game sensitivity (53.0 cm/360 at 2800 dpi)
+    yaw: 0.022        # m_yaw (CS2 default)
+    pitch: 0.022      # m_pitch (CS2 default)
+
+  # KovaaK's: cm_per_360 from KovaaK's sensitivity settings. Wins over sens if both are set.
+  kovaaks:            # flicking / clicking scenarios, matched to CS2
+    game: kovaaks
+    cm_per_360: 53.0
+    pitch_ratio: 1.0  # KovaaK's vertical sens ratio
+
+  kovaaks_tracking:   # tracking scenarios
+    game: kovaaks
+    cm_per_360: 40.0
+    pitch_ratio: 1.0
+
+kovaaks:
+  stats_dir: auto     # or the full path to ...\FPSAimTrainer\FPSAimTrainer\stats
+
+# Segmentation settings (all in degrees / deg/s / ms, so sens-independent).
+# Everything is optional; defaults live in aimlab_analyzer/segment.py (Params).
+analysis:
+  buckets: [5, 15]          # flick distance edges: small < 5 deg <= medium < 15 deg <= large
+  # move_threshold: 5.0     # deg/s above which the crosshair counts as moving
+  # min_peak_velocity: 20.0 # slower click-anchored movements are micro-adjustments, not flicks
+  # max_click_delay_ms: 600 # settle -> click longer than this is not treated as a flick

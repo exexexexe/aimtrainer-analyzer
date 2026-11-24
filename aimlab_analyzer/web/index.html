@@ -1,0 +1,527 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Aim Dashboard</title>
+<style>
+:root {
+  --page: #f9f9f7; --surface: #fcfcfb; --raised: #ffffff;
+  --ink: #0b0b0b; --ink-2: #52514e; --muted: #898781;
+  --grid: #e1e0d9; --axis: #c3c2b7; --border: #e6e5df;
+  --series-1: #2a78d6; --series-2: #eb6834; --series-3: #1baf7a; --series-4: #eda100; --series-5: #e87ba4;
+  --good: #0ca30c; --good-ink: #006300; --warning: #fab219; --critical: #d03b3b;
+  --select: #e8f0fb; --band: rgba(250, 178, 25, .12);
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --page: #0d0d0d; --surface: #1a1a19; --raised: #222221;
+    --ink: #f0efec; --ink-2: #c3c2b7; --muted: #898781;
+    --grid: #2c2c2a; --axis: #383835; --border: #2c2c2a;
+    --series-1: #3987e5; --series-2: #d95926; --series-3: #199e70; --series-4: #c98500; --series-5: #d55181;
+    --good-ink: #0ca30c; --select: #1c2a3d; --band: rgba(250, 178, 25, .10);
+  }
+}
+* { box-sizing: border-box; }
+body { margin: 0; background: var(--page); color: var(--ink);
+  font: 14px/1.45 system-ui, -apple-system, "Segoe UI", Roboto, sans-serif; }
+header { display: flex; align-items: center; gap: 16px; padding: 12px 20px; border-bottom: 1px solid var(--border);
+  background: var(--surface); position: sticky; top: 0; z-index: 5; flex-wrap: wrap; }
+header h1 { font-size: 16px; margin: 0; }
+.tabs { display: flex; gap: 4px; }
+.tabs button, .seg button { border: 1px solid var(--border); background: var(--raised); color: var(--ink-2);
+  padding: 5px 12px; border-radius: 6px; cursor: pointer; font: inherit; }
+.tabs button[aria-selected="true"], .seg button[aria-pressed="true"] { background: var(--ink); color: var(--surface); border-color: var(--ink); }
+.status { margin-left: auto; display: flex; gap: 14px; align-items: center; color: var(--ink-2); font-size: 13px; }
+.dot { display: inline-block; width: 8px; height: 8px; border-radius: 50%; margin-right: 6px; background: var(--muted); }
+.dot.on { background: var(--critical); }
+label.follow { display: flex; gap: 6px; align-items: center; cursor: pointer; }
+
+main { display: grid; grid-template-columns: 300px minmax(0, 1fr); min-height: calc(100vh - 54px); }
+#detail, .card { min-width: 0; }
+#list { border-right: 1px solid var(--border); background: var(--surface); overflow-y: auto; max-height: calc(100vh - 54px); position: sticky; top: 54px; }
+#list .day { padding: 10px 16px 4px; font-size: 12px; color: var(--muted); font-weight: 600; text-transform: uppercase; letter-spacing: .04em; }
+.run { display: grid; grid-template-columns: 1fr auto; gap: 2px 8px; padding: 8px 16px; cursor: pointer; border-left: 3px solid transparent; }
+.run:hover { background: var(--page); }
+.run.sel { background: var(--select); border-left-color: var(--series-1); }
+.run .name { font-weight: 600; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.run .score { text-align: right; font-variant-numeric: tabular-nums; font-weight: 600; }
+.run .meta { font-size: 12px; color: var(--ink-2); grid-column: 1 / -1; }
+.pb { font-size: 11px; font-weight: 700; color: var(--good-ink); border: 1px solid currentColor; border-radius: 4px; padding: 0 4px; margin-left: 6px; }
+.rec { font-size: 11px; color: var(--ink-2); margin-left: 6px; }
+
+#detail { padding: 20px 28px 40px; max-width: 1180px; }
+.title { display: flex; align-items: baseline; gap: 12px; flex-wrap: wrap; }
+.title h2 { margin: 0; font-size: 22px; }
+.sub, .strip { color: var(--ink-2); font-size: 13px; }
+.strip { display: flex; gap: 18px; flex-wrap: wrap; margin: 6px 0 4px; font-variant-numeric: tabular-nums; }
+.strip b { color: var(--ink); font-weight: 600; }
+section { margin: 18px 0; }
+h3 { font-size: 15px; margin: 0 0 4px; }
+.desc { color: var(--ink-2); font-size: 12px; margin: 0 0 10px; }
+.findings { display: grid; gap: 8px; }
+.finding { display: grid; grid-template-columns: 82px 1fr; gap: 12px; align-items: start; background: var(--surface);
+  border: 1px solid var(--border); border-left-width: 4px; border-radius: 8px; padding: 10px 14px; }
+.finding .lvl { font-size: 12px; font-weight: 700; display: flex; gap: 6px; align-items: center; color: var(--ink-2); }
+.finding .lvl i { font-style: normal; display: inline-grid; place-items: center; width: 18px; height: 18px; border-radius: 50%; color: #fff; font-size: 11px; }
+.finding.bad { border-left-color: var(--critical); } .finding.bad i { background: var(--critical); }
+.finding.warn { border-left-color: var(--warning); } .finding.warn i { background: var(--warning); color: #0b0b0b; }
+.finding.good { border-left-color: var(--good); } .finding.good i { background: var(--good); }
+.finding.info { border-left-color: var(--axis); } .finding.info i { background: var(--muted); }
+.finding .t { font-weight: 600; } .finding .d { color: var(--ink-2); font-size: 13px; }
+.card { background: var(--surface); border: 1px solid var(--border); border-radius: 10px; padding: 14px 16px; overflow-x: auto; }
+.grid2 { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 16px; margin: 16px 0; }
+.chart-head { display: flex; justify-content: space-between; align-items: baseline; gap: 8px; flex-wrap: wrap; }
+svg { display: block; width: 100%; overflow: visible; }
+svg text { fill: var(--muted); font-size: 11px; }
+svg text.lab { fill: var(--ink-2); font-size: 12px; }
+svg text.val { fill: var(--ink); font-size: 12px; font-variant-numeric: tabular-nums; }
+.tip { position: fixed; pointer-events: none; background: var(--raised); color: var(--ink); border: 1px solid var(--border);
+  box-shadow: 0 4px 14px rgba(0,0,0,.12); border-radius: 6px; padding: 6px 9px; font-size: 12px; display: none; z-index: 20; }
+table { border-collapse: collapse; width: 100%; font-variant-numeric: tabular-nums; }
+th, td { text-align: right; padding: 6px 8px; border-bottom: 1px solid var(--grid); font-size: 13px; }
+th:first-child, td:first-child { text-align: left; }
+th { color: var(--ink-2); font-weight: 600; font-size: 12px; }
+td.usual { color: var(--muted); }
+.note { color: var(--ink-2); font-size: 12px; margin-top: 8px; }
+.empty { color: var(--muted); padding: 30px 0; text-align: center; }
+.legend { display: flex; gap: 14px; flex-wrap: wrap; font-size: 12px; color: var(--ink-2); margin: 2px 0 8px; }
+.legend span::before { content: ""; display: inline-block; width: 10px; height: 10px; border-radius: 3px; margin-right: 5px; vertical-align: -1px; background: var(--c); }
+.legend span.line::before { height: 3px; border-radius: 2px; vertical-align: 3px; }
+.phase { display: flex; height: 34px; border-radius: 6px; overflow: hidden; gap: 2px; background: var(--surface); }
+.phase div { display: flex; align-items: center; justify-content: center; color: #fff; font-size: 12px; font-weight: 600; white-space: nowrap; overflow: hidden; min-width: 2px; }
+.kpis { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 10px; margin-top: 10px; }
+.kpi .k { font-size: 12px; color: var(--ink-2); } .kpi .v { font-size: 20px; font-weight: 700; font-variant-numeric: tabular-nums; }
+.kpi .c { font-size: 12px; color: var(--muted); }
+#scenarios { padding: 20px 28px; grid-column: 1 / -1; }
+#scenarios tr { cursor: pointer; } #scenarios tr:hover td { background: var(--surface); }
+#scen-filter { padding: 6px 10px; border: 1px solid var(--border); border-radius: 6px; background: var(--raised); color: var(--ink); font: inherit; width: 260px; max-width: 100%; }
+.up { color: var(--good-ink); } .down { color: var(--critical); }
+details summary { cursor: pointer; font-weight: 600; }
+@media (max-width: 900px) {
+  main { grid-template-columns: minmax(0, 1fr); }
+  #list { position: static; max-height: 260px; border-right: 0; border-bottom: 1px solid var(--border); }
+  #detail, #scenarios { padding: 16px; }
+  header { padding: 10px 16px; } .status { margin-left: 0; width: 100%; justify-content: space-between; }
+  .grid2, .kpis { grid-template-columns: minmax(0, 1fr); }
+  .kpis { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .finding { grid-template-columns: 1fr; gap: 4px; }
+}
+</style>
+</head>
+<body>
+<header>
+  <h1>Aim Dashboard</h1>
+  <div class="tabs" role="tablist">
+    <button role="tab" aria-selected="true" data-tab="runs">Runs</button>
+    <button role="tab" aria-selected="false" data-tab="scenarios">Scenarios</button>
+  </div>
+  <div class="status">
+    <span id="recstate"><span class="dot"></span>not recording</span>
+    <label class="follow"><input type="checkbox" id="follow" checked> follow latest run</label>
+  </div>
+</header>
+<main id="runs-view">
+  <nav id="list" aria-label="Runs"></nav>
+  <div id="detail"><div class="empty">Loading…</div></div>
+</main>
+<main id="scen-view" hidden>
+  <div id="scenarios"></div>
+</main>
+<div class="tip" id="tip"></div>
+
+<script>
+const $ = (s, el = document) => el.querySelector(s);
+const esc = s => String(s ?? "").replace(/[&<>"]/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));
+const fmt = (v, d = 0) => v == null ? "–" : Number(v).toLocaleString(undefined, { maximumFractionDigits: d, minimumFractionDigits: d });
+const pct = (v, d = 0) => v == null ? "–" : (v * 100).toFixed(d) + "%";
+const signed = (v, d = 0, unit = "") => v == null ? "–" : (v > 0 ? "+" : v < 0 ? "−" : "±") + Math.abs(v).toFixed(d) + unit;
+const time = iso => new Date(iso).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
+const day = iso => new Date(iso).toLocaleDateString([], { weekday: "short", month: "short", day: "numeric" });
+const css = v => getComputedStyle(document.documentElement).getPropertyValue(v).trim();
+const median = a => { const b = a.filter(v => v != null).sort((x, y) => x - y), n = b.length; return n ? (n % 2 ? b[(n - 1) / 2] : (b[n / 2 - 1] + b[n / 2]) / 2) : null; };
+const BUCKET_COLOR = { small: "--series-1", medium: "--series-2", large: "--series-3" };
+
+let state = { sig: null, runs: [], selected: null, follow: true, metric: "score", detail: null };
+
+async function api(path) {
+  const r = await fetch(path);
+  if (!r.ok) throw new Error(await r.text());
+  return r.json();
+}
+
+// ---------- runs list ----------
+function renderList() {
+  let html = "", lastDay = "";
+  for (const r of state.runs) {
+    const d = day(r.end);
+    if (d !== lastDay) { html += `<div class="day">${esc(d)}</div>`; lastDay = d; }
+    html += `<div class="run ${r.id === state.selected ? "sel" : ""}" data-id="${r.id}" role="button" tabindex="0">
+      <div class="name" title="${esc(r.scenario)}">${esc(r.scenario)}</div>
+      <div class="score">${fmt(r.score, r.score < 100 ? 1 : 0)}${r.is_pb ? '<span class="pb">PB</span>' : ""}</div>
+      <div class="meta">${time(r.end)} · ${pct(r.accuracy)} acc · ${r.kind}${r.has_recording ? '<span class="rec">● mouse data</span>' : ""}</div></div>`;
+  }
+  $("#list").innerHTML = html || '<div class="empty">No KovaaK\'s runs found.</div>';
+}
+$("#list").addEventListener("click", e => {
+  const el = e.target.closest(".run"); if (!el) return;
+  state.follow = el.dataset.id === state.runs[0]?.id; $("#follow").checked = state.follow;
+  select(el.dataset.id);
+});
+$("#list").addEventListener("keydown", e => { if (e.key === "Enter") e.target.closest(".run")?.click(); });
+$("#follow").addEventListener("change", e => { state.follow = e.target.checked; if (state.follow && state.runs[0]) select(state.runs[0].id); });
+
+async function select(id) {
+  state.selected = id; renderList();
+  history.replaceState(null, "", "#run=" + id);
+  $("#detail").innerHTML = '<div class="empty">Analyzing…</div>';
+  try { state.detail = await api("/api/run/" + id); renderDetail(); }
+  catch (e) { $("#detail").innerHTML = `<div class="empty">Could not load run: ${esc(e.message)}</div>`; }
+}
+
+// ---------- run detail ----------
+const LEVELS = { bad: ["✕", "Problem"], warn: ["!", "Work on"], good: ["✓", "Good"], info: ["i", "Note"] };
+const card = (id, title, desc, extra = "") => `<div class="card"><h3>${title}</h3><p class="desc">${desc}</p>${extra}<div id="${id}"></div></div>`;
+const legend = items => `<div class="legend">${items.map(([c, t, line]) => `<span class="${line ? "line" : ""}" style="--c:var(${c})">${t}</span>`).join("")}</div>`;
+
+function renderDetail() {
+  const { run, context: c, findings, mouse } = state.detail;
+  let html = `
+    <div class="title"><h2>${esc(run.scenario)}</h2>
+      <span class="sub">${day(run.end)} ${time(run.end)} · ${run.kind} · ${run.duration_s}s · sens ${esc(run.sens)}${mouse ? ` · ${fmt(mouse.conversion.cm_per_360, 1)} cm/360` : ""}</span></div>
+    <div class="strip"><span>Score <b>${fmt(run.score, run.score < 100 ? 1 : 0)}</b>${c.is_pb ? '<span class="pb">PB</span>' : ` (PB ${fmt(c.pb_before, 0)})`}</span>
+      <span>Accuracy <b>${pct(run.accuracy, 1)}</b></span><span>Kills <b>${fmt(run.kills)}</b></span>
+      <span>Shots <b>${fmt(run.shots)}</b></span><span>Avg TTK <b>${fmt(run.avg_ttk, 3)}s</b></span></div>
+    <section><h3>Mechanics</h3><div class="findings">${findings.map(f => `
+      <div class="finding ${f.level}"><div class="lvl"><i>${LEVELS[f.level][0]}</i>${LEVELS[f.level][1]}</div>
+      <div><div class="t">${esc(f.title)}</div>${f.detail ? `<div class="d">${esc(f.detail)}</div>` : ""}</div></div>`).join("")}</div></section>`;
+  if (mouse) html += run.kind === "click" ? clickLayout(mouse) : trackingLayout(mouse);
+  html += `<section class="card"><details><summary>Score history for this scenario</summary>
+      <div class="chart-head" style="margin-top:10px"><div class="legend"><span class="line" style="--c:var(--series-1)">each run</span><span class="line" style="--c:var(--series-2)">trend (median of last 5)</span></div>
+      <div class="seg" role="group"><button data-m="score" aria-pressed="${state.metric === "score"}">Score</button>
+      <button data-m="accuracy" aria-pressed="${state.metric === "accuracy"}">Accuracy</button></div></div>
+      <div id="hist"></div></details></section>`;
+  $("#detail").innerHTML = html;
+  if (mouse) (run.kind === "click" ? drawClick : drawTracking)(mouse);
+  $("#detail details").addEventListener("toggle", drawHistory);
+  $("#detail .seg").addEventListener("click", e => {
+    const m = e.target.dataset.m; if (!m) return;
+    state.metric = m; $("#detail .seg").querySelectorAll("button").forEach(b => b.setAttribute("aria-pressed", b.dataset.m === m));
+    drawHistory();
+  });
+}
+
+function sourceNote(m) {
+  return `<div class="note">${pct(m.coverage)} of the run recorded · ${m.labels.kill ?? 0} kill shots and ${m.labels.miss ?? 0} misses identified from KovaaK's kill log · flick stats use ${esc(m.flicks_used)} (${m.n_flicks}).</div>`;
+}
+
+function clickLayout(m) {
+  const ph = m.phases, cp = m.click_pull, hj = m.holds;
+  const counts = cp.median_deg != null ? cp.median_deg * cp.counts_per_deg : null;
+  return `
+    <section class="card"><h3>Where the time goes (median flick)</h3>
+      <p class="desc">From the previous kill to the shot: start of the next move, the main flick, corrections, then the wait before clicking.</p>
+      <div id="phases"></div>
+      <div class="kpis">
+        <div class="kpi"><div class="k">Click pull (median)</div><div class="v">${fmt(counts, 1)} counts</div><div class="c">${fmt(cp.median_mm, 3)} mm · ${pct(cp.share_over)} of still shots ≥ ${cp.threshold_deg}°</div></div>
+        <div class="kpi"><div class="k">Shake while holding</div><div class="v">${fmt(hj.jitter_rms_deg, 4)}°</div><div class="c">8–30 Hz, ${hj.n} holds</div></div>
+        <div class="kpi"><div class="k">Fired while moving</div><div class="v">${pct(m.misses.moving_share)}</div><div class="c">of misses · ${pct(m.misses.hits_moving_share)} of hits</div></div>
+        <div class="kpi"><div class="k">Path straightness</div><div class="v">${fmt(m.flicks_all.path_efficiency, 3)}</div><div class="c">1 = perfectly straight</div></div>
+      </div></section>
+    <div class="grid2">
+      ${card("landing", "Flick landing", "Where the first (ballistic) movement stops, relative to the target, as % of flick distance. Left of center = underflick, right = overflick, up/down = off to the side of the path.",
+        legend([["--series-1", "small &lt;5°"], ["--series-2", "medium 5–15°"], ["--series-3", "large ≥15°"]]))}
+      ${card("missoff", "Miss offset", "Where each missed shot landed relative to where the target was (the next kill), in degrees on screen. The ringed marker is the average.",
+        legend([["--series-2", "fired while moving"], ["--series-1", "fired while still"]]))}
+    </div>
+    <div class="grid2">
+      ${card("dirs", "Under / overflick by direction", "Median first-movement error per flick direction. Bars left = underflick, right = overflick.",
+        legend([["--series-1", "underflick"], ["--series-2", "overflick"]]))}
+      ${card("ttt", "Time to target vs distance", "Each dot is a flick. A steep line means long flicks cost you much more time.",
+        legend([["--series-1", "flick"], ["--series-2", "trend", true]]))}
+    </div>
+    <div class="grid2">
+      ${card("profile", "Flick speed profile", "Median crosshair speed from flick onset. One clean bell then a short tail = decisive; a long low tail = homing in slowly.")}
+      ${card("tension", "Tension over the run", "Shake while holding still and click pull, per window. Rising lines = tension or fatigue building.",
+        legend([["--series-1", "hold shake (°)", true], ["--series-2", "click pull (°)", true]]))}
+    </div>
+    ${flickTable(m)}`;
+}
+
+function trackingLayout(m) {
+  const t = m.tracking, sp = m.spectrum;
+  return `
+    <section class="card"><h3>Tracking mechanics</h3>
+      <div class="kpis">
+        <div class="kpi"><div class="k">Shake 8–30 Hz</div><div class="v">${pct(t.jitter_hf_ratio, t.jitter_hf_ratio != null && t.jitter_hf_ratio < 0.01 ? 2 : 1)}</div><div class="c">of movement power · ${fmt(t.jitter_rms_deg, 3)}° size</div></div>
+        <div class="kpi"><div class="k">Speed variability</div><div class="v">${fmt(t.speed_cv, 2)}</div><div class="c">lower = smoother following</div></div>
+        <div class="kpi"><div class="k">Smoothness (SPARC)</div><div class="v">${fmt(t.sparc, 2)}</div><div class="c">closer to 0 = smoother</div></div>
+        <div class="kpi"><div class="k">Tremor peak</div><div class="v">${sp?.tremor_hz ? fmt(sp.tremor_hz, 1) + " Hz" : "–"}</div><div class="c">${sp?.tremor_ratio ? fmt(sp.tremor_ratio, 1) + "× background" : "no clear peak"}</div></div>
+      </div><div class="note">${fmt(t.seconds, 1)} s of continuous tracking, mean speed ${fmt(t.mean_speed, 1)}°/s.</div></section>
+    <div class="grid2">
+      ${card("spectrum", "Movement spectrum", "Power of your crosshair velocity by frequency (log scale). Intentional tracking lives below ~5 Hz; a bump in the shaded 8–12 Hz band is tremor, which grows with grip tension.")}
+      ${card("tension", "Tension over the run", "Tracking shake and shake while holding, per window.",
+        legend([["--series-1", "tracking shake (°)", true], ["--series-2", "hold shake (°)", true]]))}
+    </div>`;
+}
+
+function flickTable(m) {
+  const B = ["small", "medium", "large"], b = m.buckets, fa = m.flicks_all, ua = state.detail.usual?.flicks_all || {};
+  const row = (label, key, f) => `<tr><td>${label}</td>${B.map(k => `<td>${b[k].n ? f(b[k][key]) : "–"}</td>`).join("")}
+    <td><b>${f(fa[key])}</b></td><td class="usual">${ua[key] !== undefined ? f(ua[key]) : "–"}</td></tr>`;
+  const ms = v => v == null ? "–" : fmt(v) + " ms";
+  return `<section class="card"><h3>Flick breakdown by distance</h3>
+    <table><tr><th>metric</th><th>small &lt;5°</th><th>medium 5–15°</th><th>large ≥15°</th><th>all</th><th>your usual</th></tr>
+    <tr><td>flicks</td>${B.map(k => `<td>${b[k].n}</td>`).join("")}<td><b>${fa.n}</b></td><td class="usual"></td></tr>
+    ${row("kill → next move", "reaction_ms", ms)}
+    ${row("time to target", "time_to_target_ms", ms)}
+    ${row("peak speed", "peak_velocity", v => v == null ? "–" : fmt(v) + "°/s")}
+    ${row("peak timing in flick (0.5 = symmetric)", "peak_time_frac", v => fmt(v, 2))}
+    ${row("first movement lands (− short / + past)", "primary_error_pct", v => signed(v, 1, "%"))}
+    ${row("underflicks (&gt;5% short)", "undershoot_share", v => pct(v))}
+    ${row("overflicks (&gt;5% past)", "overshoot_share", v => pct(v))}
+    ${row("sideways offset of first movement", "offaxis_abs_pct", v => v == null ? "–" : fmt(v, 1) + "%")}
+    ${row("corrections per flick", "corrections", v => fmt(v, 2))}
+    ${row("settle → click", "click_delay_ms", ms)}
+    ${row("clicked while moving", "clicked_moving", v => pct(v))}
+    ${row("path straightness", "path_efficiency", v => fmt(v, 3))}
+    </table>${sourceNote(m)}</section>`;
+}
+
+// ---------- chart helpers (inline SVG) ----------
+const tip = $("#tip");
+function showTip(e, html) { tip.innerHTML = html; tip.style.display = "block";
+  const x = Math.min(e.clientX + 14, innerWidth - tip.offsetWidth - 8); tip.style.left = x + "px"; tip.style.top = (e.clientY + 14) + "px"; }
+function hideTip() { tip.style.display = "none"; }
+function bindTips(el) {
+  el.querySelectorAll("[data-tip]").forEach(n => {
+    n.addEventListener("mousemove", e => showTip(e, n.dataset.tip));
+    n.addEventListener("mouseleave", hideTip);
+  });
+}
+function niceTicks(lo, hi, n = 4) {
+  if (hi === lo) { hi = lo + 1; }
+  const step0 = (hi - lo) / n, mag = 10 ** Math.floor(Math.log10(step0));
+  const step = [1, 2, 2.5, 5, 10].map(s => s * mag).find(s => s >= step0);
+  const ticks = [], top = Math.ceil(hi / step - 1e-9) * step;
+  for (let v = Math.floor(lo / step) * step; v <= top + step * 0.001; v += step) ticks.push(+v.toFixed(10));
+  return ticks;
+}
+const empty = (el, msg) => { el.innerHTML = `<div class="empty">${msg}</div>`; };
+
+// Square scatter centered on a target at (0,0)
+function targetScatter(el, pts, { range, unit, xLeft, xRight, yTop, yBottom, mean }) {
+  const W = Math.min(el.clientWidth || 360, 420), H = W, pad = 30, R = range;
+  const X = v => pad + (Math.max(-R, Math.min(R, v)) + R) / (2 * R) * (W - 2 * pad);
+  const Y = v => pad + (R - Math.max(-R, Math.min(R, v))) / (2 * R) * (H - 2 * pad);
+  let s = `<svg viewBox="0 0 ${W} ${H}" height="${H}" style="max-width:${W}px;margin:auto" role="img">`;
+  for (const f of [0.5, 1]) s += `<circle cx="${X(0)}" cy="${Y(0)}" r="${f * (W - 2 * pad) / 2}" fill="none" stroke="${css("--grid")}"/>`;
+  s += `<line x1="${pad}" x2="${W - pad}" y1="${Y(0)}" y2="${Y(0)}" stroke="${css("--axis")}"/><line y1="${pad}" y2="${H - pad}" x1="${X(0)}" x2="${X(0)}" stroke="${css("--axis")}"/>`;
+  s += `<text x="${pad}" y="${Y(0) - 6}">${xLeft}</text><text x="${W - pad}" y="${Y(0) - 6}" text-anchor="end">${xRight}</text>
+        <text x="${X(0) + 6}" y="${pad - 8}">${yTop}</text><text x="${X(0) + 6}" y="${H - pad + 16}">${yBottom}</text>
+        <text x="${W - pad}" y="${H - pad + 16}" text-anchor="end">outer ring ${R}${unit}</text>`;
+  for (const p of pts) s += `<circle cx="${X(p.x)}" cy="${Y(p.y)}" r="4.5" fill="${css(p.c)}" fill-opacity=".75" stroke="${css("--surface")}" stroke-width="1.5" data-tip="${esc(p.tip)}"/>`;
+  s += `<circle cx="${X(0)}" cy="${Y(0)}" r="5" fill="none" stroke="${css("--ink")}" stroke-width="2"/>`;
+  if (mean) s += `<circle cx="${X(mean.x)}" cy="${Y(mean.y)}" r="9" fill="none" stroke="${css("--ink")}" stroke-width="2.5" data-tip="${esc(mean.tip)}"/>`;
+  el.innerHTML = s + "</svg>"; bindTips(el);
+}
+
+function lineChart(el, series, { xLabel, yFmt = v => v, height = 200, logY = false, band = null, xMax = null }) {
+  const W = el.clientWidth || 400, H = height, m = { l: 48, r: 12, t: 10, b: 34 };
+  const xs = series.flatMap(s => s.x), ys = series.flatMap(s => s.y).filter(v => v != null && (!logY || v > 0));
+  if (!ys.length) return empty(el, "Not enough data.");
+  const xt = niceTicks(Math.min(0, ...xs), xMax ?? Math.max(...xs));
+  let ylo = logY ? Math.floor(Math.log10(Math.min(...ys))) : 0, yhi = logY ? Math.ceil(Math.log10(Math.max(...ys))) : null;
+  const yt = logY ? Array.from({ length: yhi - ylo + 1 }, (_, i) => ylo + i) : niceTicks(0, Math.max(...ys));
+  const y0 = yt[0], y1 = yt[yt.length - 1];
+  const X = v => m.l + (v - xt[0]) / (xt[xt.length - 1] - xt[0]) * (W - m.l - m.r);
+  const Y = v => m.t + (1 - ((logY ? Math.log10(v) : v) - y0) / (y1 - y0 || 1)) * (H - m.t - m.b);
+  let s = `<svg viewBox="0 0 ${W} ${H}" height="${H}" role="img">`;
+  if (band) s += `<rect x="${X(band[0])}" y="${m.t}" width="${X(band[1]) - X(band[0])}" height="${H - m.t - m.b}" fill="${css("--band")}"/>`;
+  for (const t of yt) { const yv = logY ? 10 ** t : t;
+    s += `<line x1="${m.l}" x2="${W - m.r}" y1="${Y(yv)}" y2="${Y(yv)}" stroke="${css("--grid")}"/><text x="${m.l - 6}" y="${Y(yv) + 4}" text-anchor="end">${logY ? "1e" + t : yFmt(t)}</text>`; }
+  for (const t of xt) s += `<text x="${X(t)}" y="${H - 18}" text-anchor="middle">${t}</text>`;
+  s += `<text x="${(m.l + W - m.r) / 2}" y="${H - 2}" text-anchor="middle">${xLabel}</text>`;
+  for (const sr of series) {
+    let d = "", pen = false;
+    sr.x.forEach((x, i) => { const v = sr.y[i]; if (v == null || (logY && v <= 0)) { pen = false; return; } d += `${pen ? "L" : "M"}${X(x)},${Y(v)} `; pen = true; });
+    s += `<path d="${d}" fill="none" stroke="${css(sr.c)}" stroke-width="2" stroke-linejoin="round"/>`;
+    if (sr.dots) sr.x.forEach((x, i) => { const v = sr.y[i]; if (v != null) s += `<circle cx="${X(x)}" cy="${Y(v)}" r="4" fill="${css(sr.c)}" stroke="${css("--surface")}" stroke-width="2" data-tip="${esc(sr.name + ": " + yFmt(v) + " at " + x + " " + (sr.xUnit || ""))}"/>`; });
+  }
+  el.innerHTML = s + "</svg>"; bindTips(el);
+}
+
+// ---------- click charts ----------
+function drawClick(m) {
+  // phases bar
+  const ph = m.phases, parts = [["kill → next move", ph.reaction_ms, "--series-4"], ["main flick", ph.ballistic_ms, "--series-1"],
+    ["corrections", ph.correction_ms, "--series-2"], ["wait → click", ph.verify_ms, "--series-3"]].filter(p => p[1] != null && p[1] > 0);
+  const total = parts.reduce((a, p) => a + p[1], 0);
+  $("#phases").innerHTML = total ? `<div class="phase">${parts.map(([n, v, c]) =>
+      `<div style="flex:${v};background:var(${c})" data-tip="${esc(n)}: ${fmt(v)} ms">${v / total > 0.12 ? fmt(v) + " ms" : ""}</div>`).join("")}</div>
+      ${legend(parts.map(([n, v, c]) => [c, `${n} ${fmt(v)} ms`]))}` : '<div class="empty">Not enough flicks.</div>';
+  bindTips($("#phases"));
+
+  // landing scatter
+  const lp = m.flick_points.filter(p => p.along != null);
+  if (lp.length < 3) empty($("#landing"), "Not enough flicks.");
+  else targetScatter($("#landing"), lp.map(p => ({ x: p.along, y: -p.perp, c: BUCKET_COLOR[p.bucket],
+      tip: `${fmt(p.amp, 1)}° flick: ${signed(p.along, 0, "%")} ${p.along < 0 ? "short" : "past"}, ${fmt(Math.abs(p.perp), 0)}% to the side<br>${p.corr} corrections · ${fmt(p.ttt)} ms` })),
+    { range: 50, unit: "%", xLeft: "← short", xRight: "past →", yTop: "left of path", yBottom: "right of path",
+      mean: { x: median(lp.map(p => p.along)), y: -median(lp.map(p => p.perp)), tip: "median landing" } });
+
+  // miss offset scatter
+  const mp = m.miss_points, mb = m.miss_bias;
+  if (!mp.length) empty($("#missoff"), "No misses with a clear target position.");
+  else {
+    // scale to the 90th percentile so one wild miss doesn't squash the rest; outliers sit on the edge
+    const ext = mp.map(p => Math.max(Math.abs(p.x), Math.abs(p.y))).sort((a, b) => a - b);
+    const R = Math.max(0.5, Math.ceil(ext[Math.floor(0.9 * (ext.length - 1))] * 1.2 * 4) / 4);
+    targetScatter($("#missoff"), mp.map(p => ({ x: p.x, y: p.y, c: p.moving ? "--series-2" : "--series-1",
+        tip: `${fmt(Math.abs(p.x), 2)}° ${p.x >= 0 ? "right" : "left"}, ${fmt(Math.abs(p.y), 2)}° ${p.y >= 0 ? "high" : "low"} · ${esc(p.kind)}${p.moving ? " · moving" : ""}` })),
+      { range: R, unit: "°", xLeft: "← left", xRight: "right →", yTop: "high", yBottom: "low",
+        mean: mb ? { x: mb.mean_x, y: mb.mean_y, tip: `average: ${fmt(mb.mean_x, 2)}°, ${fmt(mb.mean_y, 2)}° · consistency ${fmt(mb.consistency, 2)}` } : null });
+  }
+
+  // direction diverging bars
+  const arrows = { right: "→", "up-right": "↗", up: "↑", "up-left": "↖", left: "←", "down-left": "↙", down: "↓", "down-right": "↘" };
+  const dirs = m.directions, del = $("#dirs");
+  const W = del.clientWidth || 400, rh = 24, lw = 110, nw = 40, H = dirs.length * rh + 20;
+  const lim = Math.max(10, Math.ceil(Math.max(...dirs.map(d => Math.abs(d.along ?? 0))) / 5) * 5);
+  const cx = lw + (W - lw - nw) / 2, sc = (W - lw - nw) / 2 / lim;
+  let s = `<svg viewBox="0 0 ${W} ${H}" height="${H}" role="img">`;
+  s += `<line x1="${cx}" x2="${cx}" y1="0" y2="${H - 18}" stroke="${css("--axis")}"/>`;
+  s += `<text x="${lw}" y="${H - 4}">−${lim}% short</text><text x="${W - nw}" y="${H - 4}" text-anchor="end">+${lim}% past</text>`;
+  dirs.forEach((d, i) => {
+    const y = i * rh;
+    s += `<text class="lab" x="0" y="${y + 16}">${arrows[d.name]} ${d.name}</text>`;
+    if (d.n && d.along != null) {
+      const w = Math.abs(d.along) * sc, x = d.along < 0 ? cx - w : cx;
+      s += `<rect x="${x}" y="${y + 4}" width="${Math.max(2, w)}" height="${rh - 8}" rx="3" fill="${css(d.along < 0 ? "--series-1" : "--series-2")}"
+        data-tip="${d.name}: ${signed(d.along, 1, "%")} (${d.n} flicks), sideways ${signed(d.perp, 1, "%")}"/>`;
+      s += `<text class="val" x="${W}" y="${y + 16}" text-anchor="end">${signed(d.along, 0, "%")}</text>`;
+    } else s += `<text x="${W}" y="${y + 16}" text-anchor="end">–</text>`;
+    s += `<text x="${W - nw - 4}" y="${y + 16}" text-anchor="end">n=${d.n}</text>`;
+  });
+  del.innerHTML = s + "</svg>"; bindTips(del);
+
+  // time to target vs distance
+  const tp = m.flick_points.filter(p => p.ttt != null), te = $("#ttt");
+  if (tp.length < 3) empty(te, "Not enough flicks.");
+  else {
+    const W2 = te.clientWidth || 400, H2 = 220, g = { l: 48, r: 12, t: 10, b: 34 };
+    const xt = niceTicks(0, Math.max(...tp.map(p => p.amp))), yt = niceTicks(0, Math.max(...tp.map(p => p.ttt)));
+    const X = v => g.l + v / xt[xt.length - 1] * (W2 - g.l - g.r), Y = v => g.t + (1 - v / yt[yt.length - 1]) * (H2 - g.t - g.b);
+    let q = `<svg viewBox="0 0 ${W2} ${H2}" height="${H2}" role="img">`;
+    for (const t of yt) q += `<line x1="${g.l}" x2="${W2 - g.r}" y1="${Y(t)}" y2="${Y(t)}" stroke="${css("--grid")}"/><text x="${g.l - 6}" y="${Y(t) + 4}" text-anchor="end">${t}</text>`;
+    for (const t of xt) q += `<text x="${X(t)}" y="${H2 - 18}" text-anchor="middle">${t}°</text>`;
+    q += `<text x="${(g.l + W2 - g.r) / 2}" y="${H2 - 2}" text-anchor="middle">flick distance · time to target in ms</text>`;
+    for (const p of tp) q += `<circle cx="${X(p.amp)}" cy="${Y(p.ttt)}" r="4" fill="${css("--series-1")}" fill-opacity=".7" stroke="${css("--surface")}" stroke-width="1.5"
+      data-tip="${fmt(p.amp, 1)}°: ${fmt(p.ttt)} ms · peak ${fmt(p.pv)}°/s · ${p.corr} corrections"/>`;
+    // least squares on log2(1 + distance), the usual pointing-time model
+    const xs = tp.map(p => Math.log2(1 + p.amp)), ys = tp.map(p => p.ttt), n = xs.length;
+    const mx = xs.reduce((a, b) => a + b) / n, my = ys.reduce((a, b) => a + b) / n;
+    const k = xs.reduce((a, x, i) => a + (x - mx) * (ys[i] - my), 0) / (xs.reduce((a, x) => a + (x - mx) ** 2, 0) || 1), b0 = my - k * mx;
+    let d = ""; for (let a = 0; a <= xt[xt.length - 1]; a += xt[xt.length - 1] / 40) d += `${d ? "L" : "M"}${X(a)},${Y(Math.max(0, b0 + k * Math.log2(1 + a)))} `;
+    q += `<path d="${d}" fill="none" stroke="${css("--series-2")}" stroke-width="2.5"/>`;
+    te.innerHTML = q + "</svg>"; bindTips(te);
+  }
+
+  // speed profile
+  const p = m.speed_profile;
+  if (!p || !p.t_ms.length) empty($("#profile"), "Not enough flicks.");
+  else lineChart($("#profile"), [{ x: p.t_ms, y: p.speed, c: "--series-1", name: "speed" }], { xLabel: "ms from flick onset (°/s)" });
+
+  tensionChart(m, [["hold_jitter", "--series-1", "hold shake"], ["click_pull", "--series-2", "click pull"]],
+    "This scenario has too few still moments (holds of 150 ms+ and clean single clicks) to follow tension over time.");
+}
+
+function tensionChart(m, keys, emptyMsg) {
+  const t = m.tension, points = keys.reduce((a, [k]) => a + t[k].filter(v => v != null).length, 0);
+  if (points < 3) return empty($("#tension"), emptyMsg);
+  lineChart($("#tension"), keys.map(([k, c, name]) => ({ x: t.t, y: t[k], c, dots: true, name, xUnit: "s" })),
+    { xLabel: "seconds into the run", yFmt: v => (+v).toFixed(3) });
+}
+
+// ---------- tracking charts ----------
+function drawTracking(m) {
+  const sp = m.spectrum;
+  if (!sp) empty($("#spectrum"), "Not enough continuous tracking.");
+  else lineChart($("#spectrum"), [{ x: sp.f, y: sp.power, c: "--series-1", name: "power" }], { xLabel: "frequency (Hz)", logY: true, band: [8, 12], height: 220, xMax: 30 });
+  tensionChart(m, [["track_jitter", "--series-1", "tracking shake"], ["hold_jitter", "--series-2", "hold shake"]],
+    "Not enough continuous tracking to follow shake over time.");
+}
+
+// ---------- history ----------
+function drawHistory() {
+  const el = $("#hist"); if (!el || !$("#detail details").open) return;
+  const { history, run } = state.detail, key = state.metric;
+  const pts = history.map(h => ({ v: h[key], h })).filter(p => p.v != null);
+  const W = el.clientWidth || 700, H = 200, m = { l: 44, r: 12, t: 12, b: 24 };
+  if (!pts.length) return empty(el, "No history.");
+  const vals = pts.map(p => p.v), ticks = niceTicks(Math.min(...vals), Math.max(...vals));
+  const y0 = ticks[0], y1 = ticks[ticks.length - 1];
+  const X = i => m.l + (pts.length === 1 ? (W - m.l - m.r) / 2 : i / (pts.length - 1) * (W - m.l - m.r));
+  const Y = v => m.t + (1 - (v - y0) / (y1 - y0 || 1)) * (H - m.t - m.b);
+  const f = v => key === "accuracy" ? pct(v) : fmt(v, v < 100 ? 1 : 0);
+  const roll = pts.map((p, k) => median(pts.slice(Math.max(0, k - 4), k + 1).map(q => q.v)));
+  let s = `<svg viewBox="0 0 ${W} ${H}" height="${H}" role="img">`;
+  for (const t of ticks) s += `<line x1="${m.l}" x2="${W - m.r}" y1="${Y(t)}" y2="${Y(t)}" stroke="${css("--grid")}"/><text x="${m.l - 6}" y="${Y(t) + 4}" text-anchor="end">${f(t)}</text>`;
+  s += `<polyline fill="none" stroke="${css("--series-1")}" stroke-opacity=".45" stroke-width="1.5" points="${pts.map((p, k) => `${X(k)},${Y(p.v)}`).join(" ")}"/>`;
+  if (pts.length >= 5) s += `<polyline fill="none" stroke="${css("--series-2")}" stroke-width="2.5" points="${roll.map((v, k) => `${X(k)},${Y(v)}`).join(" ")}"/>`;
+  pts.forEach((p, k) => { const sel = p.h.id === run.id;
+    s += `<circle cx="${X(k)}" cy="${Y(p.v)}" r="${sel ? 6 : 3}" fill="${sel ? css("--surface") : css("--series-1")}" stroke="${sel ? css("--ink") : css("--surface")}" stroke-width="2"
+      data-tip="${esc(f(p.v) + " · " + day(p.h.end) + " " + time(p.h.end))}"/>`; });
+  el.innerHTML = s + "</svg>"; bindTips(el);
+}
+
+// ---------- scenarios tab ----------
+async function renderScenarios() {
+  const rows = await api("/api/scenarios");
+  const el = $("#scenarios");
+  const draw = q => {
+    const f = rows.filter(r => r.scenario.toLowerCase().includes(q.toLowerCase()));
+    el.querySelector("tbody").innerHTML = f.map(r => `<tr data-id="${r.last_id}">
+      <td>${esc(r.scenario)}</td><td>${r.kind}</td><td>${r.plays}</td><td>${fmt(r.pb, r.pb < 100 ? 1 : 0)}</td>
+      <td>${fmt(r.last, r.last < 100 ? 1 : 0)}</td>
+      <td>${r.trend == null ? "–" : `<span class="${r.trend >= 0 ? "up" : "down"}">${r.trend >= 0 ? "▲" : "▼"} ${Math.abs(r.trend * 100).toFixed(1)}%</span>`}</td>
+      <td>${pct(r.accuracy)}</td><td>${day(r.last_played)}</td></tr>`).join("");
+  };
+  el.innerHTML = `<div class="chart-head"><h3>${rows.length} scenarios</h3><input id="scen-filter" placeholder="Filter scenarios" aria-label="Filter scenarios"></div>
+    <div class="card" style="margin-top:10px"><table><thead><tr><th>scenario</th><th>type</th><th>plays</th><th>PB</th><th>last</th>
+    <th title="median of last 5 runs vs the 5 before">trend</th><th>accuracy (last 5)</th><th>last played</th></tr></thead><tbody></tbody></table></div>`;
+  draw("");
+  $("#scen-filter").addEventListener("input", e => draw(e.target.value));
+  el.querySelector("tbody").addEventListener("click", e => {
+    const tr = e.target.closest("tr"); if (!tr) return;
+    setTab("runs"); state.follow = false; $("#follow").checked = false; select(tr.dataset.id);
+  });
+}
+function setTab(t) {
+  document.querySelectorAll(".tabs button").forEach(b => b.setAttribute("aria-selected", b.dataset.tab === t));
+  $("#runs-view").hidden = t !== "runs"; $("#scen-view").hidden = t !== "scenarios";
+  if (t === "scenarios") renderScenarios();
+}
+document.querySelector(".tabs").addEventListener("click", e => { if (e.target.dataset.tab) setTab(e.target.dataset.tab); });
+
+// ---------- polling ----------
+async function poll() {
+  try {
+    const data = await api("/api/runs");
+    $("#recstate").innerHTML = `<span class="dot ${data.recording ? "on" : ""}"></span>${data.recording ? "recording mouse" : "not recording"}`;
+    if (data.sig !== state.sig) {
+      const newest = data.runs[0]?.id, changedNewest = newest !== state.runs[0]?.id;
+      state.sig = data.sig; state.runs = data.runs; renderList();
+      if (state.follow && newest && (changedNewest || state.selected === newest || !state.selected)) select(newest);
+      else if (state.selected) select(state.selected);
+    }
+  } catch (e) { $("#recstate").innerHTML = '<span class="dot"></span>dashboard server not reachable'; }
+}
+let resizeT; addEventListener("resize", () => { clearTimeout(resizeT); resizeT = setTimeout(() => state.detail && renderDetail(), 150); });
+// #run=<id> opens a specific run (bookmarkable); otherwise follow the latest
+const linked = location.hash.match(/^#run=([0-9a-f]+)$/);
+if (linked) { state.follow = false; $("#follow").checked = false; state.selected = linked[1]; select(linked[1]); }
+poll(); setInterval(poll, 3000);
+</script>
+</body>
+</html>

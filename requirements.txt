@@ -1,0 +1,7 @@
+numpy
+pandas
+pyyaml
+matplotlib    # static plots for `analyze` reports (the dashboard draws its own charts)
+pyarrow       # Parquet output; remove and set output.format: csv to skip it
+pytest
+evdev; sys_platform == "linux"
