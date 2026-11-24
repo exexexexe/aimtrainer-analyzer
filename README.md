@@ -1,8 +1,16 @@
-# aimlab-analyzer
+# Aim Trainer Analyzer
 
-Log raw mouse movement while playing CS2 or training in KovaaK's, then turn it into
-per-flick and per-track metrics. Later phases compare those metrics with pro players
-from CS2 demos. All metrics are in degrees of view rotation, so they don't depend on sens.
+Aim mechanics analysis for aim trainers (KovaaK's, Aim Lab and others) and CS2. It logs
+raw mouse movement, turns it into per-flick and per-track metrics, and finds what goes
+wrong mechanically: under/overflicking, miss offset, direction bias, click pull, and
+tension. All metrics are in degrees of view rotation, so they don't depend on sens.
+
+**Game support:**
+- **KovaaK's** has full support. The dashboard reads its stats folder, matches every run
+  to your mouse recording, and labels each shot as a hit or a miss from the kill log.
+- **Aim Lab and other trainers or games** work with the logger and the `analyze` report.
+  Flicks are inferred from your clicks, since there's no hit/miss data or automatic run
+  matching yet.
 
 | Phase | Status |
 |---|---|
